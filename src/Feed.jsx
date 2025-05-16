@@ -237,46 +237,50 @@ export default function Feed() {
     setConfirmUpdateId(null);
   };
 
-  // FIXED: Ensure post state updates after editing
-  const saveEditPost = async (id) => {
-    setConfirmUpdateId(null);
-    try {
-      const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...editPostFields,
-          timestamp: new Date().toISOString()
-        }),
-      });
 
-      if (!response.ok) {
-        let errorText;
-        try {
-          const errJson = await response.json();
-          errorText = errJson.message || JSON.stringify(errJson);
-        } catch {
-          errorText = await response.text();
-        }
-        throw new Error(errorText || "Failed to edit post");
+const saveEditPost = async (id) => {
+  setConfirmUpdateId(null);
+  try {
+    const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...editPostFields,
+        timestamp: new Date().toISOString()
+      }),
+    });
+
+    let updatedPost = null;
+    let errorText = '';
+    if (response.ok) {
+      try {
+        updatedPost = await response.json();
+      } catch {
+        updatedPost = null;
       }
-
-      const updatedPost = await response.json();
-
-      // Update local posts state with the new post data
-      setPosts(prev =>
-        prev.map(post => post.id === id ? { ...post, ...updatedPost } : post)
-      );
-      setEditPostId(null);
-      setEditPostFields({ title: "", content: "", imageUrl: "" });
-      showPop(id, "updated");
-    } catch (error) {
-      console.error("Error editing post:", error.message);
-      alert("Error editing post: " + error.message);
+    } else {
+      try {
+        const errJson = await response.json();
+        errorText = errJson.message || JSON.stringify(errJson);
+      } catch {
+        errorText = await response.text();
+      }
+      throw new Error(errorText || "Failed to edit post");
     }
-  };
+
+    setPosts(prev =>
+      prev.map(post => post.id === id ? { ...post, ...updatedPost } : post)
+    );
+    setEditPostId(null);
+    setEditPostFields({ title: "", content: "", imageUrl: "" });
+    showPop(id, "updated");
+  } catch (error) {
+    console.error("Error editing post:", error.message);
+    alert("Error editing post: " + error.message);
+  }
+};
 
   const cancelEdit = () => {
     setEditPostId(null);
