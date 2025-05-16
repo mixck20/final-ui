@@ -86,7 +86,7 @@ export default function Feed() {
   }, []);
 
   const fetchPosts = () => {
-    fetch("http://localhost:8080/api/posts")
+    fetch("https://final-api-qnqq.onrender.com/api/posts")
       .then((res) => res.json())
       .then((data) => {
         setPosts(data);
@@ -113,7 +113,7 @@ export default function Feed() {
 
     if (!isOpen) {
       try {
-        const res = await fetch(`http://localhost:8080/api/posts/${postId}/comments`);
+        const res = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${postId}/comments`);
         if (!res.ok) throw new Error("Failed to load comments");
         const data = await res.json();
         setComments((prev) => ({ ...prev, [postId]: data }));
@@ -133,7 +133,7 @@ export default function Feed() {
     if (!content || content.trim() === "") return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/posts/${postId}/comments`, {
+      const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${postId}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -180,7 +180,7 @@ export default function Feed() {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:8080/api/posts", {
+      const response = await fetch("https://final-api-qnqq.onrender.com/api/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -239,7 +239,7 @@ export default function Feed() {
   const saveEditPost = async (id) => {
     setConfirmUpdateId(null);
     try {
-      const response = await fetch(`http://localhost:8080/api/posts/${id}`, {
+      const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -294,7 +294,7 @@ export default function Feed() {
   const deletePost = async (id) => {
     setConfirmDeleteId(null);
     try {
-      const response = await fetch(`http://localhost:8080/api/posts/${id}`, {
+      const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${id}`, {
         method: "DELETE"
       });
       if (!response.ok) {
