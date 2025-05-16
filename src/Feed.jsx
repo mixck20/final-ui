@@ -23,14 +23,10 @@ function getRelativeTime(dateString) {
 const bodyFont = "Arial, 'Inter', 'Segoe UI', 'Helvetica Neue', sans-serif";
 
 export default function Feed() {
-  const [darkMode, setDarkMode] = useState(() => {
-    // Check user's preferred color scheme
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const [darkMode, setDarkMode] = useState(true);
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [likes, setLikes] = useState({});
   const [showComments, setShowComments] = useState({});
   const [comments, setComments] = useState({});
@@ -89,20 +85,18 @@ export default function Feed() {
     return () => window.removeEventListener("click", closeMenu);
   }, []);
 
-  const fetchPosts = async () => {
-    try {
-      const res = await fetch("https://final-api-qnqq.onrender.com/api/posts");
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      const data = await res.json();
-      setPosts(data);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching posts:", err);
-      setError("Failed to load posts. Please try again later.");
-      setLoading(false);
-    }
+  const fetchPosts = () => {
+    setLoading(true);
+    fetch("https://final-api-qnqq.onrender.com/api/posts")
+      .then((res) => res.json())
+      .then((data) => {
+        setPosts(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching posts:", err);
+        setLoading(false);
+      });
   };
 
   const handleLike = (id) => {
@@ -110,33 +104,15 @@ export default function Feed() {
     showPop(id, "liked");
   };
 
-  const handleShare = async (id) => {
-    try {
-      const post = posts.find(p => p.id === id);
-      const shareData = {
-        title: post.title,
-        text: post.content.substring(0, 100) + (post.content.length > 100 ? '...' : ''),
-        url: window.location.href
-      };
-      
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        // Fallback for browsers that don't support Web Share API
-        await navigator.clipboard.writeText(shareData.text);
-        showPop(id, "shared");
-      }
-    } catch (err) {
-      console.error('Error sharing:', err);
-      showPop(id, "shared");
-    }
+  const handleShare = (id) => {
+    showPop(id, "shared");
   };
 
   const toggleComments = async (postId) => {
     const isOpen = showComments[postId];
     setShowComments((prev) => ({ ...prev, [postId]: !isOpen }));
 
-    if (!isOpen && !comments[postId]) {
+    if (!isOpen) {
       try {
         const res = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${postId}/comments`);
         if (!res.ok) throw new Error("Failed to load comments");
@@ -245,11 +221,7 @@ export default function Feed() {
 
   const startEditPost = (id, post) => {
     setEditPostId(id);
-    setEditPostFields({ 
-      title: post.title, 
-      content: post.content, 
-      imageUrl: post.imageUrl || "" 
-    });
+    setEditPostFields({ title: post.title, content: post.content, imageUrl: post.imageUrl || "" });
     setMenuOpenId(null);
   };
 
@@ -265,6 +237,7 @@ export default function Feed() {
     setConfirmUpdateId(null);
   };
 
+  // FIXED: Ensure post state updates after editing
   const saveEditPost = async (id) => {
     setConfirmUpdateId(null);
     try {
@@ -279,7 +252,6 @@ export default function Feed() {
         }),
       });
 
-      let updatedPost;
       if (!response.ok) {
         let errorText;
         try {
@@ -289,14 +261,11 @@ export default function Feed() {
           errorText = await response.text();
         }
         throw new Error(errorText || "Failed to edit post");
-      } else {
-        try {
-          updatedPost = await response.json();
-        } catch {
-          updatedPost = null;
-        }
       }
 
+      const updatedPost = await response.json();
+
+      // Update local posts state with the new post data
       setPosts(prev =>
         prev.map(post => post.id === id ? { ...post, ...updatedPost } : post)
       );
@@ -366,7 +335,6 @@ export default function Feed() {
   }, [lightboxImg]);
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading posts...</p>;
-  if (error) return <p style={{ textAlign: "center", color: "#ff4444" }}>{error}</p>;
 
   return (
     <div
@@ -374,8 +342,7 @@ export default function Feed() {
         maxWidth: 600,
         margin: "20px auto",
         fontFamily: bodyFont,
-        position: "relative",
-        padding: "0 10px"
+        position: "relative"
       }}
     >
       <div
@@ -645,7 +612,7 @@ export default function Feed() {
       </div>
 
       {!posts.length ? (
-        <p style={{ textAlign: "center" }}>No posts available. Create the first one!</p>
+        <p style={{ textAlign: "center" }}>No posts available.</p>
       ) : (
         posts.map((post) => {
           const { id, author, title, content, imageUrl, timestamp } = post;
