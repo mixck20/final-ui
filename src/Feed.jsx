@@ -85,12 +85,15 @@ export default function Feed() {
     return () => window.removeEventListener("click", closeMenu);
   }, []);
 
+  // UPDATED: Always sort by timestamp descending (newest first)
   const fetchPosts = () => {
     setLoading(true);
     fetch("https://final-api-qnqq.onrender.com/api/posts")
       .then((res) => res.json())
       .then((data) => {
-        setPosts(data);
+        // Sort by timestamp descending (newest first)
+        const sorted = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setPosts(sorted);
         setLoading(false);
       })
       .catch((err) => {
@@ -204,6 +207,7 @@ export default function Feed() {
       }
 
       const createdPost = await response.json();
+      // Newest post already first, just add at the start
       setPosts(prev => [createdPost, ...prev]);
       setNewPost({
         title: "",
@@ -237,50 +241,46 @@ export default function Feed() {
     setConfirmUpdateId(null);
   };
 
-
-const saveEditPost = async (id) => {
-  setConfirmUpdateId(null);
-  try {
-    const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...editPostFields,
-        timestamp: new Date().toISOString()
-      }),
-    });
-
-    let updatedPost = null;
-    let errorText = '';
-    if (response.ok) {
-      try {
-        updatedPost = await response.json();
-      } catch {
-        updatedPost = null;
+  // Save edit post, always keep original timestamp
+  const saveEditPost = async (id) => {
+    setConfirmUpdateId(null);
+    const postToEdit = posts.find((p) => p.id === id);
+    try {
+      const response = await fetch(`https://final-api-qnqq.onrender.com/api/posts/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...editPostFields,
+          author: postToEdit.author,
+          timestamp: postToEdit.timestamp, // keep original timestamp!
+        }),
+      });
+      if (!response.ok) {
+        let errorText;
+        try {
+          const errJson = await response.json();
+          errorText = errJson.message || JSON.stringify(errJson);
+        } catch {
+          errorText = await response.text();
+        }
+        throw new Error(errorText || "Failed to update post");
       }
-    } else {
-      try {
-        const errJson = await response.json();
-        errorText = errJson.message || JSON.stringify(errJson);
-      } catch {
-        errorText = await response.text();
-      }
-      throw new Error(errorText || "Failed to edit post");
+      const updatedPost = await response.json();
+      setPosts(prev => prev.map(post =>
+        post.id === id
+          ? { ...post, ...updatedPost, timestamp: post.timestamp } // ensure timestamp is unchanged
+          : post
+      ));
+      setEditPostId(null);
+      setEditPostFields({ title: "", content: "", imageUrl: "" });
+      showPop(id, "updated");
+    } catch (error) {
+      console.error("Error updating post:", error.message);
+      alert("Error updating post: " + error.message);
     }
-
-    setPosts(prev =>
-      prev.map(post => post.id === id ? { ...post, ...updatedPost } : post)
-    );
-    setEditPostId(null);
-    setEditPostFields({ title: "", content: "", imageUrl: "" });
-    showPop(id, "updated");
-  } catch (error) {
-    console.error("Error editing post:", error.message);
-    alert("Error editing post: " + error.message);
-  }
-};
+  };
 
   const cancelEdit = () => {
     setEditPostId(null);
